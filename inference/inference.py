@@ -3,8 +3,11 @@
 
 # from accelerate import init_empty_weights, load_checkpoint_and_dispatch
 
+import sys
+sys.path.append('../')
 from configs.fsdp import fsdp_config
 from configs.training import train_config
+
 import fire
 import torch
 import os
