@@ -67,6 +67,7 @@ def main(
     torch.manual_seed(seed)
     
     model = load_model(model_name, quantization)
+    model.to('cpu')
     tokenizer = LlamaTokenizer.from_pretrained(model_name)
     tokenizer.add_special_tokens(
         {
