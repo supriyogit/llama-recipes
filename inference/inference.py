@@ -18,7 +18,7 @@ from torch.distributed.fsdp import (
 
 from transformers import LlamaTokenizer
 from transformers.models.llama.modeling_llama import LlamaDecoderLayer
-
+from torch.distributed._shard.checkpoint import FileSystemReader
 from safety_utils import get_safety_checker
 from model_utils import load_model, load_peft_model
 from utils import train_utils
@@ -98,7 +98,7 @@ def main(
         model = FSDP(model, device_id=local_rank)
         with FSDP.state_dict_type(model, StateDictType.SHARDED_STATE_DICT):
             state_dict = model.state_dict()
-            torch.distributed._shard.checkpoint.load_state_dict(state_dict=state_dict, storage_reader=FileSystemReader(checkpoint))
+            torch.distributed._shard.checkpoint.load_state_dict(state_dict=state_dict, storage_reader=FileSystemReader(checkpoint_dir))
             model.load_state_dict(state_dict)
             model.to(local_rank)
 
