@@ -47,18 +47,21 @@ def main(
     checkpoint_dir: str = None, # [optional] The directory to find checkpoints of the model (no peft)
     **kwargs
 ):
-    if prompt_file is not None:
-        assert os.path.exists(
-            prompt_file
-        ), f"Provided Prompt file does not exist {prompt_file}"
-        with open(prompt_file, "r") as f:
-            user_prompt = "\n".join(f.readlines())
-    elif not sys.stdin.isatty():
-        user_prompt = "\n".join(sys.stdin.readlines())
-    else:
-        print("No user prompt provided. Exiting.")
-        sys.exit(1)
-    
+    # if prompt_file is not None:
+    #     assert os.path.exists(
+    #         prompt_file
+    #     ), f"Provided Prompt file does not exist {prompt_file}"
+    #     with open(prompt_file, "r") as f:
+    #         user_prompt = "\n".join(f.readlines())
+    # elif not sys.stdin.isatty():
+    #     user_prompt = "\n".join(sys.stdin.readlines())
+    # else:
+    #     print("No user prompt provided. Exiting.")
+    #     sys.exit(1)
+
+    user_prompt = "Below is an instruction that describes a task, paired with an input that provides further context. Write a response that appropriately completes the request.\n\n### Instruction:\nWhat does it mean to \"switch the billing setting for creating separate billing documents for each item of the billing due list in the Create Billing Documents app to off\"\n\n###Input:\nby product ID or service confirmation ID). * Group the items (for example, by sold-to party). * Use page variants to save and load custom filter and column layouts that you have created. Filter values that you have set are also saved. You can share saved page variants with other users in the system. Release Items for Billing You can release service order and service confirmation items that you have selected, for billing. After you have released the items, the system creates billing document requests.Note If an item belongs to a service bundle, you must release all items of the bundle simultaneously. Caution \n To ensure that the system consolidates the billing document requests to create only one invoice containing the agreed fixed price, the billing setting for creating separate billing documents for each item of the billing due list in the  Create Billing Documents app must be switched to off.Supported Device Types * Desktop * Tablet \n\n### Response:"
+
+
     # Set the seeds for reproducibility
     torch.cuda.manual_seed(seed)
     torch.manual_seed(seed)
@@ -153,9 +156,11 @@ def main(
     # Safety check of the model output
     safety_results = [check(output_text) for check in safety_checker]
     are_safe = all([r[1] for r in safety_results])
+
     if are_safe:
-        print("User input and model output deemed safe.")
-        print(f"Model output:\n{output_text}")
+        if rank == 0:
+            print("User input and model output deemed safe.")
+            print(f"Model output:\n{output_text}")
     else:
         print("Model output deemed unsafe.")
         for method, is_safe, report in safety_results:
