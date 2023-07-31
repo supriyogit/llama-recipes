@@ -20,8 +20,8 @@ from torch.distributed.fsdp import (
 from transformers import LlamaTokenizer
 from transformers.models.llama.modeling_llama import LlamaDecoderLayer
 from torch.distributed._shard.checkpoint import FileSystemReader
-from safety_utils import get_safety_checker
-from model_utils import load_model, load_peft_model
+from inference.safety_utils import get_safety_checker
+from inference.model_utils import load_model, load_peft_model
 from utils import train_utils
 from utils.fsdp_utils import fsdp_auto_wrap_policy
 
