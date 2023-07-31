@@ -138,7 +138,7 @@ def main(
     model.eval()
 
     batch = tokenizer(user_prompt, return_tensors="pt")
-    batch = {k: v.to("cuda") for k, v in batch.items()}
+    batch = {k: v.to(local_rank) for k, v in batch.items()}
     start = time.perf_counter()
     with torch.no_grad():
         outputs = model.generate(
