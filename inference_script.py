@@ -76,6 +76,7 @@ def main(
     )
 
     # use FSDP
+    rank=0
     if checkpoint_dir is not None:
         train_utils.setup()
         # torchrun specific
@@ -84,10 +85,10 @@ def main(
         world_size = int(os.environ["WORLD_SIZE"])
 
         if torch.distributed.is_initialized():
-            torch.cuda.set_device(rank)
-            train_utils.setup_environ_flags(rank)
+            torch.cuda.set_device(local_rank)
+            train_utils.setup_environ_flags(local_rank)
         
-        mixed_precision_policy, wrapping_policy = train_utils.get_policies(fsdp_config, rank)
+        mixed_precision_policy, wrapping_policy = train_utils.get_policies(fsdp_config, local_rank)
         my_auto_wrapping_policy = fsdp_auto_wrap_policy(model, LlamaDecoderLayer)
    
         model = FSDP(
