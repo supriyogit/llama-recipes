@@ -84,9 +84,8 @@ def main(
         rank = int(os.environ["RANK"])
         world_size = int(os.environ["WORLD_SIZE"])
 
-        if torch.distributed.is_initialized():
-            torch.cuda.set_device(local_rank)
-            train_utils.setup_environ_flags(local_rank)
+        torch.cuda.set_device(local_rank)
+        train_utils.setup_environ_flags(local_rank)
         
         mixed_precision_policy, wrapping_policy = train_utils.get_policies(fsdp_config, local_rank)
         my_auto_wrapping_policy = fsdp_auto_wrap_policy(model, LlamaDecoderLayer)
@@ -100,7 +99,6 @@ def main(
             limit_all_gathers=True,
         )
 
-        model = FSDP(model, device_id=local_rank)
         with FSDP.state_dict_type(model, StateDictType.SHARDED_STATE_DICT):
             state_dict = model.state_dict()
             torch.distributed._shard.checkpoint.load_state_dict(state_dict=state_dict, storage_reader=FileSystemReader(checkpoint_dir))
