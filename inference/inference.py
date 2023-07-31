@@ -3,16 +3,26 @@
 
 # from accelerate import init_empty_weights, load_checkpoint_and_dispatch
 
+from configs.fsdp import fsdp_config
+from configs.training import train_config
 import fire
 import torch
 import os
 import sys
 import time
 from typing import List
+from torch.distributed.fsdp import (
+    FullyShardedDataParallel as FSDP,
+    StateDictType
+)
 
 from transformers import LlamaTokenizer
+from transformers.models.llama.modeling_llama import LlamaDecoderLayer
+
 from safety_utils import get_safety_checker
 from model_utils import load_model, load_peft_model
+from utils import train_utils
+from utils.fsdp_utils import fsdp_auto_wrap_policy
 
 
 def main(
@@ -33,6 +43,7 @@ def main(
     enable_azure_content_safety: bool=False, # Enable safety check with Azure content safety api
     enable_sensitive_topics: bool=False, # Enable check for sensitive topics using AuditNLG APIs
     enable_saleforce_content_safety: bool=True, # Enable safety check woth Saleforce safety flan t5
+    checkpoint_dir: str = None, # [optional] The directory to find checkpoints of the model (no peft)
     **kwargs
 ):
     if prompt_file is not None:
@@ -59,6 +70,38 @@ def main(
             "pad_token": "<PAD>",
         }
     )
+
+    # use FSDP
+    if checkpoint_dir is not None:
+        train_utils.setup()
+        # torchrun specific
+        local_rank = int(os.environ["LOCAL_RANK"])
+        rank = int(os.environ["RANK"])
+        world_size = int(os.environ["WORLD_SIZE"])
+
+        if torch.distributed.is_initialized():
+            torch.cuda.set_device(rank)
+            train_utils.setup_environ_flags(rank)
+        
+        mixed_precision_policy, wrapping_policy = train_utils.get_policies(fsdp_config, rank)
+        my_auto_wrapping_policy = fsdp_auto_wrap_policy(model, LlamaDecoderLayer)
+   
+        model = FSDP(
+            model,
+            auto_wrap_policy=wrapping_policy,
+            mixed_precision=mixed_precision_policy if not fsdp_config.pure_bf16 else None,
+            sharding_strategy=fsdp_config.sharding_strategy,
+            device_id=torch.cuda.current_device(),
+            limit_all_gathers=True,
+        )
+
+        model = FSDP(model, device_id=local_rank)
+        with FSDP.state_dict_type(model, StateDictType.SHARDED_STATE_DICT):
+            state_dict = model.state_dict()
+            torch.distributed._shard.checkpoint.load_state_dict(state_dict=state_dict, storage_reader=FileSystemReader(checkpoint))
+            model.load_state_dict(state_dict)
+            model.to(local_rank)
+
     
     safety_checker = get_safety_checker(enable_azure_content_safety,
                                         enable_sensitive_topics,
