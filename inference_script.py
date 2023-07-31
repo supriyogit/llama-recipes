@@ -106,14 +106,12 @@ def main(
         print("wrapped model successfully")
 
         with FSDP.state_dict_type(model, StateDictType.SHARDED_STATE_DICT):
-            state_dict = model.state_dict()
-            torch.distributed._shard.checkpoint.load_state_dict(state_dict=state_dict, storage_reader=FileSystemReader(checkpoint_dir))
-            print("wrapped model state-dict")
-            print(state_dict.keys())
-            model.load_state_dict(state_dict)
+            model_ckp = {"model": model.state_dict()}
+            torch.distributed._shard.checkpoint.load_state_dict(state_dict=model_ckp, storage_reader=FileSystemReader(checkpoint_dir))
+            model.load_state_dict(model_ckp['model'])
         model.to(local_rank)
 
-    
+
     safety_checker = get_safety_checker(enable_azure_content_safety,
                                         enable_sensitive_topics,
                                         enable_saleforce_content_safety,
