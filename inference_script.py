@@ -65,9 +65,13 @@ def main(
     # Set the seeds for reproducibility
     torch.cuda.manual_seed(seed)
     torch.manual_seed(seed)
+    rank=0
     
     model = load_model(model_name, quantization)
     model.to('cpu')
+    print("original model state-dict keys")
+    print(model.state_dict().keys())
+
     tokenizer = LlamaTokenizer.from_pretrained(model_name)
     tokenizer.add_special_tokens(
         {
@@ -77,7 +81,6 @@ def main(
     )
 
     # use FSDP
-    rank=0
     if checkpoint_dir is not None:
         train_utils.setup()
         # torchrun specific
@@ -100,9 +103,13 @@ def main(
             limit_all_gathers=True,
         )
 
+        print("wrapped model successfully")
+
         with FSDP.state_dict_type(model, StateDictType.SHARDED_STATE_DICT):
             state_dict = model.state_dict()
             torch.distributed._shard.checkpoint.load_state_dict(state_dict=state_dict, storage_reader=FileSystemReader(checkpoint_dir))
+            print("wrapped model state-dict")
+            print(state_dict.keys())
             model.load_state_dict(state_dict)
         model.to(local_rank)
 
