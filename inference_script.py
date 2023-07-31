@@ -95,7 +95,7 @@ def main(
             auto_wrap_policy=wrapping_policy,
             mixed_precision=mixed_precision_policy if not fsdp_config.pure_bf16 else None,
             sharding_strategy=fsdp_config.sharding_strategy,
-            device_id=torch.cuda.current_device(),
+            device_id=local_rank,
             limit_all_gathers=True,
         )
 
@@ -103,7 +103,7 @@ def main(
             state_dict = model.state_dict()
             torch.distributed._shard.checkpoint.load_state_dict(state_dict=state_dict, storage_reader=FileSystemReader(checkpoint_dir))
             model.load_state_dict(state_dict)
-            model.to(local_rank)
+        model.to(local_rank)
 
     
     safety_checker = get_safety_checker(enable_azure_content_safety,
